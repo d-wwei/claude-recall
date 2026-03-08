@@ -13,76 +13,33 @@ This is a one-click bootstrap prompt that transforms Claude Code by:
 
 **One run is all it takes.** After that, Claude Code will automatically initialize any new project and remember how you work.
 
-## What's Included
-
-| File | Purpose |
-| --- | --- |
-| [`step1-init.md`](./step1-init.md) | The bootstrap prompt — copy the `text` block and send to Claude Code |
-| [`claude-code-personal-assistant-bootstrap-prompt.md`](./claude-code-personal-assistant-bootstrap-prompt.md) | Prompt overview: what it does, what it writes, built-in optimizations |
-
 ## Quick Start
 
-1. Open [`step1-init.md`](./step1-init.md).
-2. Copy the full `text` code block.
+1. Open [`claude-code-companion-bootstrap.md`](./claude-code-companion-bootstrap.md).
+2. Copy the full `text` code block (~210 lines).
 3. Send it to Claude Code in your target workspace.
 4. Claude Code will:
    - Set up `~/.claude/` with global assistant rules (with `@` import compatibility check)
    - Create `.assistant/` project memory structure
    - Start a bootstrap conversation (how to address you, your role, preferred style)
 
-> **One-time setup.** Global rules persist permanently. For each new project, Claude Code will automatically initialize `.assistant/` and bootstrap.
+> **One-time setup.** Global rules persist permanently — every new project gets auto-initialized from then on. You never need to send the prompt again.
 
-## Core Idea: File System as External Memory
+## What the Prompt Does
 
-Inspired by [OpenClaw's memory model](https://docs.openclaw.ai/concepts/memory), this prompt uses the file system as a durable collaboration layer.
+### Global Layer `~/.claude/`
 
-### The Two Layers
-
-| Layer | Path | Purpose |
-| --- | --- | --- |
-| Global | `~/.claude/` | Behavior rules that apply everywhere: role, read order, conflict resolution, memory policy |
-| Project | `.assistant/` | Per-project memory: user profile, style, workflow, decisions, daily context |
-
-### Why This Matters
-
-Without structured memory, you repeat yourself every session:
-- how you want answers structured
-- what role you play in the workspace
-- which tradeoffs the project already made
-- where the last session stopped
-
-With `.assistant/`, these become editable project assets:
-
-| File | Stores |
+| File | Purpose |
 | --- | --- |
-| `USER.md` | Who you are: name, role, context |
-| `STYLE.md` | Communication style: concise vs detailed, tone |
-| `WORKFLOW.md` | How work is done: report structure, decision preferences |
-| `MEMORY.md` | Long-term reusable facts and preferences |
-| `memory/projects/*.md` | Project-specific decisions and cross-session context |
-| `memory/daily/*.md` | Temporary daily notes (auto-lifecycle: 7→promote, 14→suggest delete) |
-| `runtime/inbox.md` | Short-lived action items and reminders |
-| `runtime/last-session.md` | Last session summary and next steps |
+| `CLAUDE.md` | Entry file, `@` imports other rules (auto-merges if `@` not supported) |
+| `assistant-core.md` | Role behavior, read order, conflict resolution, quick review entry |
+| `bootstrap-rules.md` | Cold start rules: tiered questions, state tracking, completion persistence |
+| `memory-policy.md` | Memory write / conflict / cleanup / audit rules |
+| `project-filesystem.md` | Project file structure definition, Git safety handling |
 
-## Built-in Optimizations
+### Project Layer `.assistant/`
 
-The prompt includes 13 production-hardened optimizations:
-
-1. `@` import compatibility detection + merged fallback
-2. Idempotency check (3-line content rule)
-3. Post-write file verification
-4. Daily log lifecycle (7/14 day cleanup)
-5. `last-session.md` write timing rules
-6. Memory conflict resolution
-7. Bootstrap completion state persistence
-8. Question priority tiers (must-ask / should-ask / accumulate naturally)
-9. User audit rights (view / delete / export / monthly reminder)
-10. `.gitignore` auto-handling
-11. Template system (customizable during bootstrap)
-12. Quick review entry ("查看我的配置" / "review my setup")
-13. Workspace confirmation (prevents `.assistant/` in non-project dirs)
-
-## Project Memory Structure
+Auto-created per project:
 
 ```
 .assistant/
@@ -101,6 +58,43 @@ The prompt includes 13 production-hardened optimizations:
     inbox.md         — short-lived action items
     last-session.md  — last session summary
 ```
+
+## Core Idea: File System as External Memory
+
+Inspired by [OpenClaw's memory model](https://docs.openclaw.ai/concepts/memory), this prompt uses the file system as a durable collaboration layer.
+
+| Layer | Path | Purpose |
+| --- | --- | --- |
+| Global | `~/.claude/` | Behavior rules that apply everywhere: role, read order, conflict resolution, memory policy |
+| Project | `.assistant/` | Per-project memory: user profile, style, workflow, decisions, daily context |
+
+### Why This Matters
+
+Without structured memory, you repeat yourself every session:
+- how you want answers structured
+- what role you play in the workspace
+- which tradeoffs the project already made
+- where the last session stopped
+
+With `.assistant/`, these become editable project assets instead of fragile chat leftovers.
+
+## Built-in Optimizations
+
+The prompt includes 13 production-hardened optimizations:
+
+1. `@` import compatibility detection + merged fallback
+2. Idempotency check (3-line content rule)
+3. Post-write file verification
+4. Daily log lifecycle (7/14 day cleanup)
+5. `last-session.md` write timing rules
+6. Memory conflict resolution
+7. Bootstrap completion state persistence (`status` field)
+8. Question priority tiers (must-ask / should-ask / accumulate naturally)
+9. User audit rights (view / delete / export / monthly reminder)
+10. `.gitignore` auto-handling
+11. Template system (customizable during bootstrap)
+12. Quick review entry ("查看我的配置" / "review my setup")
+13. Workspace confirmation (prevents `.assistant/` in non-project dirs)
 
 ## Design Principles
 
