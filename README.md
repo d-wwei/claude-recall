@@ -34,6 +34,29 @@ This repository adapts that philosophy to Claude Code by combining:
 - `~/.claude/` for global behavior defaults
 - `.assistant/` for project-local memory and collaboration context
 
+### Project Layer `.assistant/`
+
+Auto-created per project:
+
+```
+.assistant/
+  SYSTEM.md          — workspace-level rules and safety boundaries
+  USER.md            — who the user is: name, role, context, language
+  STYLE.md           — communication style preferences
+  WORKFLOW.md        — how work is done
+  TOOLS.md           — tool preferences and boundaries
+  MEMORY.md          — concise long-term reusable memory
+  BOOTSTRAP.md       — bootstrap state tracking
+  sync-policy.md     — global memory sync strategy (ask / always / never)
+  memory/
+    daily/           — short-lived daily context (YYYY-MM-DD.md)
+    projects/        — project-level cross-session memory
+  templates/         — reusable starter templates
+  runtime/
+    inbox.md         — short-lived action items
+    last-session.md  — last session summary
+```
+
 The result is not "turning Claude Code into OpenClaw". The result is giving Claude Code a more structured memory surface so it can feel less stateless and more like a repeatable collaborator.
 
 ## What This Changes
@@ -96,6 +119,26 @@ It is best understood as a structured full setup version:
 - proactive enough to initialize global and project layers
 - explicit about file creation and verification
 - opinionated about memory structure and bootstrap flow
+
+## Built-in Optimizations
+
+The prompt includes 15 production-hardened optimizations:
+
+1. `@` import compatibility detection + merged fallback
+2. Idempotency check (3-line content rule)
+3. Post-write file verification
+4. Daily log lifecycle (7/14 day cleanup)
+5. `last-session.md` write timing rules
+6. Memory conflict resolution
+7. Bootstrap completion state persistence (`status` field)
+8. Question priority tiers (must-ask / should-ask / accumulate naturally)
+9. User audit rights (view / delete / export / monthly reminder)
+10. `.gitignore` auto-handling
+11. Template system (customizable during bootstrap)
+12. Quick review entry ("查看我的配置" / "review my setup")
+13. Workspace confirmation (prevents `.assistant/` in non-project dirs)
+14. HOME directory global-only mode (uses `~/.claude/` directly, skips `.assistant/`)
+15. Global Memory Promotion (syncs reusable knowledge from projects to global memory with 4 strategies: sync once / keep local / always sync / never sync)
 
 ## Design Principles
 
