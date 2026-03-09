@@ -34,6 +34,18 @@ This repository adapts that philosophy to Claude Code by combining:
 - `~/.claude/` for global behavior defaults
 - `.assistant/` for project-local memory and collaboration context
 
+### Global Layer `~/.claude/`
+
+| File | Purpose |
+| --- | --- |
+| `CLAUDE.md` | Entry file, `@` imports other rules (auto-merges if `@` not supported) |
+| `assistant-core.md` | Role behavior, read order, conflict resolution, quick review entry |
+| `bootstrap-rules.md` | Cold start rules: tiered questions, state tracking, completion persistence |
+| `memory-policy.md` | Memory write / conflict / cleanup / audit rules |
+| `project-filesystem.md` | Project file structure definition, Git safety handling |
+| `global-*.md` | Global user profile, style, workflow, and reusable memory |
+| `global-projects-index.md` | Auto-maintained index of all initialized projects and recent sessions |
+
 ### Project Layer `.assistant/`
 
 Auto-created per project:
