@@ -19,6 +19,16 @@ This repository is designed around those realities.
 
 Instead of assuming the model will remember everything, it uses the file system as a durable collaboration surface that Claude Code can re-read and update over time.
 
+## Key Features
+
+This prompt transforms Claude Code from a powerful but amnesic one-shot tool into a long-term collaborator that builds rapport with you.
+
+- **Long-term Memory Setup:** Automatically establishes persistent global rules (`~/.claude/`) and project-specific memory (`.assistant/`).
+- **Preference Accumulation:** Remembers how you like things done—your role, coding style, workflow, and recurring instructions.
+- **Global Memory Promotion:** As it discovers your habits and reusable knowledge during active projects, it can automatically promote them to your global profile.
+- **Project-Specific Customization:** Every project can have its own tailored rules and context that override the global defaults.
+- **Continuous Collaboration:** You never have to explain your background, structure, or current progress from scratch again when re-entering a workspace.
+
 ## Why OpenClaw-Inspired Memory For Claude Code
 
 Claude Code is strong at following instructions, reading repositories, and editing files. But that does not automatically make it a long-term collaboration system.
