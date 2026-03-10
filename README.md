@@ -8,9 +8,9 @@
 > **Looking for other CLI assistants?** 
 > Check out the sister extensions: [Gemini Recall](https://github.com/d-wwei/gemini-recall) & [Codex Recall](https://github.com/d-wwei/codex-recall)
 
-Turn Claude Code into a more consistent, workspace-aware, long-term personal assistant deployment pack.
+Turn Claude Code into a long-term collaboration system with durable memory and session continuity.
 
-A deployment-ready package for people who want Claude Code to do more than answer one-off questions. It helps Claude Code establish a durable collaboration layer through global rules in `~/.claude/` and project-local memory in `.assistant/`.
+A deployment-ready package for people who want Claude Code to do more than answer one-off questions. It emphasizes long-term memory, growing collaboration chemistry over time, session handoff continuity, and fast recall of prior context.
 
 ## Why This Exists
 
@@ -31,9 +31,10 @@ This prompt transforms Claude Code from a powerful but amnesic one-shot tool int
 
 - **Long-term Memory Setup:** Automatically establishes persistent global rules (`~/.claude/`) and project-specific memory (`.assistant/`).
 - **Preference Accumulation:** Remembers how you like things done—your role, coding style, workflow, and recurring instructions.
+- **Session Handoff Continuity:** Keeps work resumable across interruptions, so the next session can continue from the right breakpoint instead of restarting from scratch.
 - **Global Memory Promotion:** As it discovers your habits and reusable knowledge during active projects, it can automatically promote them to your global profile.
 - **Project-Specific Customization:** Every project can have its own tailored rules and context that override the global defaults.
-- **Continuous Collaboration:** You never have to explain your background, structure, or current progress from scratch again when re-entering a workspace.
+- **Fast Recall:** Helps Claude quickly recall your background, working style, recent decisions, and unfinished context when you re-enter a workspace.
 - **Task-Level Resume Checkpoints:** For multi-step work of many kinds, Claude can maintain a module-local `PROGRESS.md` so a new process can resume from the last accepted step or milestone instead of reconstructing progress from chat.
 - **Layered Bootstrap Interview:** The first-round interview now follows a compact 3-step script that captures name, style, assistant role, ambiguity handling, work types, and memory boundaries without turning startup into a form.
 - **Global Quick Mode:** When launched from `$HOME`, Claude initializes only the global layer and writes directly to `~/.claude/` without asking whether to sync those same facts again.
