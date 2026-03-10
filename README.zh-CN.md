@@ -1,9 +1,12 @@
-# Claude Code 个人助理初始化系统
+# Claude Recall
+
+> Have a mind like a steel trap.
+> 长期记忆，断点中继。
 
 [English](./README.md)
 
 > **正在寻找其他 CLI 助手的版本？**
-> 看看兄弟扩展项目：[Gemini Companion Starter](https://github.com/d-wwei/gemini-companion-starter) & [Codex Companion Starter](https://github.com/d-wwei/Codex-companion-starter)
+> 看看兄弟扩展项目：[Gemini Recall](https://github.com/d-wwei/gemini-recall) & [Codex Recall](https://github.com/d-wwei/codex-recall)
 
 把 Claude Code 调整成一个更稳定、更懂工作区上下文、适合长期协作的个人助理部署包。
 
