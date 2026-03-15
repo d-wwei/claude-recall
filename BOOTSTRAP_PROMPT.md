@@ -93,15 +93,18 @@ For each new task in a workspace, read in this order when available:
 1. Global user profile (`~/.claude/global-user.md`, `global-style.md`, `global-workflow.md`, `global-memory.md`)
 2. Global projects index (`~/.claude/global-projects-index.md`) — for cross-project context awareness
 3. `.assistant/SYSTEM.md`
-4. `.assistant/USER.md` (project override — if exists and non-empty, overrides global-user.md)
-5. `.assistant/STYLE.md` (project override — if exists and non-empty, overrides global-style.md)
-6. `.assistant/WORKFLOW.md` (project override — if exists and non-empty, overrides global-workflow.md)
-7. `.assistant/TOOLS.md`
-8. `.assistant/MEMORY.md` (project-level memory, supplements global-memory.md)
-9. relevant `.assistant/memory/projects/*.md`
-10. today's `.assistant/memory/daily/YYYY-MM-DD.md`
-11. `.assistant/runtime/inbox.md`
-12. `.assistant/runtime/last-session.md`
+4. `.assistant/runtime/active-task.md` and `.assistant/runtime/resume-protocol.md` — workspace-level recovery state (read before module-level details)
+5. relevant module-local `PROGRESS.md` — only if deeper task detail is needed after workspace-level recovery files
+6. `.assistant/USER.md` (project override — if exists and non-empty, overrides global-user.md)
+7. `.assistant/STYLE.md` (project override — if exists and non-empty, overrides global-style.md)
+8. `.assistant/WORKFLOW.md` (project override — if exists and non-empty, overrides global-workflow.md)
+9. `.assistant/TOOLS.md`
+10. `.assistant/MEMORY.md` (project-level memory, supplements global-memory.md)
+11. relevant `.assistant/memory/projects/*.md`
+12. today's `.assistant/memory/daily/YYYY-MM-DD.md`
+13. `.assistant/runtime/inbox.md`
+14. `.assistant/runtime/interrupted-tasks.md`
+15. `.assistant/runtime/last-session.md`
 
 ## Inheritance model
 - Global user files (`~/.claude/global-*.md`) are the **baseline identity** — they define who the user is across all projects.
@@ -118,8 +121,38 @@ For each new task in a workspace, read in this order when available:
 - Do not silently preserve stale preferences when the user has corrected them.
 - When the user updates identity info during any project bootstrap, ask whether to also update the global profile.
 
+## Quick recall protocol
+When the user says "继续", "resume", "刚才做到哪里了", "continue", or equivalent recovery phrases, output **exactly three sections** in this order, separated by `---`:
+
+```
+A. 当前主任务
+   - 任务名称、当前进度、下一步
+   - 执行上下文摘要（关键输入、已做决策、中间产出位置）
+
+---
+
+B. 其他中断任务
+   - 优先级、进度、下一步（每任务一行）
+
+---
+
+C. 恢复选项
+   - 编号列表，供用户选择继续哪个任务
+```
+
+- Read `active-task.md`（含 `## 执行上下文`）and `resume-protocol.md` first; do NOT scan all PROGRESS.md files before this first reply.
+- 恢复时，先读 `active-task.md` 中的执行上下文，再根据上下文中的文件路径读取相关中间产出（如草稿文件），这样才能真正接续工作。
+- If `active-task.md` is empty or missing, fall back to `last-session.md`.
+- Keep the reply compact — no lengthy analysis before the three sections.
+
+Runtime files for this protocol:
+- `active-task.md` — single highest-priority live task for fast re-entry
+- `interrupted-tasks.md` — paused task queue in priority order
+- `resume-protocol.md` — hard rules for the first recovery reply
+- `resume-checkpoint-template.md` — schema for named handoff checkpoints
+
 ## Quick review
-When the user says "查看我的配置", "回顾当前规则", "review my setup", or similar, output a concise summary of: USER.md identity, STYLE.md preferences, MEMORY.md entry count, inbox.md pending count, BOOTSTRAP.md status, last-session.md summary.
+When the user says "查看我的配置", "回顾当前规则", "review my setup", or similar, output a concise summary of: USER.md identity, STYLE.md preferences, MEMORY.md entry count, inbox.md pending count, BOOTSTRAP.md status, active `PROGRESS.md` if any, last-session.md summary.
 
 --- ~/.claude/bootstrap-rules.md ---
 
@@ -225,11 +258,93 @@ passwords, secrets, API keys, tokens, ID numbers, bank info, private health info
 - **MEMORY.md**: stable long-term preferences, collaboration rules, high-value reusable facts
 - **memory/projects/*.md**: project goals, constraints, decisions, cross-session context, next steps
 - **memory/daily/YYYY-MM-DD.md**: today's context, temporary notes, unconfirmed facts, one-off fragments
+- **module-local `PROGRESS.md`**: task-level implementation checkpoint for resumable work inside the active module directory
 - **runtime/inbox.md**: follow-ups, reminders, pending confirmations, short action items
 - **runtime/last-session.md**: last session summary, blockers, recommended next step
 
+## Active task write timing
+`active-task.md` 是会话恢复的主锚点，必须保持与当前工作同步。在以下时机更新：
+- 用户分配新任务或明确新目标时 → 写入任务名、状态设为 `in_progress`、记录 `started` 日期，同时写入 `## 执行上下文`
+- 任务取得阶段性进展时 → 更新 `progress`、`next_step` 和 `## 执行上下文`
+- 切换到另一个任务时 → 将当前任务（含上下文）移入 `interrupted-tasks.md`，新任务写入 `active-task.md`
+- 会话即将结束或被中断时 → 确保 `active-task.md` 反映最新进度、下一步和执行上下文
+- 任务完成时 → 状态设为 `completed`，然后清空为 idle 模板
+
+格式：
+```
+task: 任务简述
+status: in_progress | completed | blocked
+progress: 当前已完成的关键点
+next_step: 下一步具体动作
+started: YYYY-MM-DD
+
+## 执行上下文
+- 任务背景：为什么做这件事，用户的核心诉求
+- 关键输入：素材来源、参考资料、用户提供的原始信息摘要
+- 已做决策：讨论中确定的方向、框架、约束条件
+- 中间产出：已生成的文件路径、草稿状态、关键内容片段
+- 用户要求：明确提出的格式、风格、长度、语言等具体要求
+- 待确认项：尚未决定的问题（如有）
+```
+
+### 执行上下文写入规则
+- **不是每轮对话都写**，而是在以下节点更新：
+  - 任务刚分配、方向确定时（初始上下文）
+  - 产出中间结果时（记录产出位置和状态）
+  - 用户给出关键反馈或修改方向时（更新已做决策）
+  - 会话即将结束时（确保上下文完整，下次能直接继续）
+- **上下文要具体到可执行**：不是"在写一篇文章"，而是"在写一篇关于 X 的文章，核心论点是 Y，目标读者是 Z，已完成开头段落"
+- **只记关键信息**：不需要复述完整对话，提取能让新会话直接推进工作的最小必要信息
+- 如果上下文中某个字段不适用，省略该字段即可，不需要写"无"
+
+Do NOT leave `active-task.md` empty when there is ongoing work.
+
 ## Session summary write timing
 Update `last-session.md` when a task is finished, when the user says "结束/归档/done", or when switching sessions. Do NOT update on every turn.
+
+## Task progress checkpoint rules
+- For any implementation task that spans multiple acceptance items, files, or verification steps, create or update a nearby `PROGRESS.md`.
+- Place `PROGRESS.md` in the actual module or task directory being edited, not in `~/.claude/` and not as a substitute for `.assistant/runtime/last-session.md`.
+- Use this default structure:
+
+  ```md
+  status: in_progress
+  task: 任务名称
+  module_path: 模块路径/
+
+  # 开发进度
+
+  ## 已完成
+  - [x] 已完成项目
+
+  ## 进行中
+  - [ ] 当前正在进行的步骤
+
+  ## 待做
+  - [ ] 后续步骤
+
+  ## 关键决策
+  - 决策记录
+
+  ## 已知问题
+  - 问题记录
+  ```
+
+- Update it only when:
+  - an acceptance item is completed
+  - the active step changes
+  - a blocker appears
+  - the process is about to hand off or stop unexpectedly
+- Do not turn `PROGRESS.md` into a diary, chat log, or duplicate of Git diff output.
+- When resuming and a relevant `PROGRESS.md` exists with unfinished work, summarize: done / current step / next step, then ask the user whether to continue from that checkpoint.
+- When the task is finished, mark `status: completed`.
+- Support explicit recovery commands such as "继续上次进度", "恢复进度", "resume progress", or "continue from progress".
+- Locate the relevant `PROGRESS.md` in this order:
+  - current working directory or actively edited module
+  - most recently modified module
+  - user-named module or feature scope
+  - best keyword-matching module
+- If multiple candidates remain, read only the top 1-2 and briefly ask the user which module to continue.
 
 ## Global index update timing
 - When a new `.assistant/` is initialized → add a project entry to `~/.claude/global-projects-index.md`
@@ -379,8 +494,14 @@ This file is an auto-maintained index for quick lookup. Do not manually edit unl
     projects/      — project-level cross-session memory
   templates/       — reusable starter templates (user can add/modify/remove)
   runtime/
-    inbox.md       — short-lived action items
-    last-session.md — last session summary
+    inbox.md                    — short-lived action items
+    last-session.md             — last session summary
+    active-task.md              — single highest-priority live task for fast re-entry
+    interrupted-tasks.md        — paused task queue in priority order
+    resume-protocol.md          — hard rules for the first recovery reply
+    resume-checkpoint-template.md — schema for named handoff checkpoints
+
+Outside `.assistant/`, create a local `PROGRESS.md` inside the active module directory whenever implementation work is multi-step and likely to need interruption-safe recovery.
 
 ## Inheritance rules
 - Project files override global files only when they have substantive content.
@@ -392,6 +513,69 @@ This file is an auto-maintained index for quick lookup. Do not manually edit unl
 - Core files empty → bootstrap and fill.
 - Already active → read and use, don't re-ask known info.
 - First-ever bootstrap → also populate `~/.claude/global-*.md` files.
+- If an active implementation task already has a nearby `PROGRESS.md`, read and reuse it before starting new work.
+
+### Runtime files to create on initialization
+When creating a new `.assistant/` structure, always initialize these runtime files:
+
+**`runtime/active-task.md`** — current highest-priority task:
+```
+# Active Task
+task: (none)
+status: idle
+progress: —
+next_step: —
+started: —
+```
+
+**`runtime/interrupted-tasks.md`** — paused task queue:
+```
+# Interrupted Tasks
+(empty)
+```
+
+**`runtime/resume-protocol.md`** — recovery reply rules:
+```
+# Resume Protocol
+当用户说"继续"、"resume"、"刚才做到哪里了"、"continue"等恢复性指令时：
+1. 先读 active-task.md（含 ## 执行上下文），不要先扫描所有 PROGRESS.md
+2. 根据执行上下文中的文件路径，读取相关中间产出（草稿、素材等）
+3. 输出恰好三段，用 --- 分隔：
+   A. 当前主任务（任务名称、当前进度、下一步 + 执行上下文摘要）
+   B. 其他中断任务（每任务一行：优先级、进度、下一步）
+   C. 恢复选项（编号列表供用户选择）
+4. 若 active-task.md 为空，回退到 last-session.md
+5. 第一条回复保持简洁，不做冗长分析
+6. 用户选择继续后，基于已读取的上下文和中间产出直接推进，不需要重新询问已知信息
+```
+
+**`runtime/resume-checkpoint-template.md`** — named handoff checkpoint schema:
+```
+checkpoint: <名称>
+task: <任务描述>
+date: YYYY-MM-DD
+status: in_progress | blocked | review
+
+## 已完成
+- [x] ...
+
+## 当前步骤
+- [ ] ...（正在进行）
+
+## 待做
+- [ ] ...
+
+## 执行上下文
+- 任务背景：...
+- 关键输入：...
+- 已做决策：...
+- 中间产出：...
+- 用户要求：...
+- 待确认项：...
+
+## 下一步建议
+- ...
+```
 
 ## Git safety
 - If current dir is a Git repo, ensure `.assistant/` is in `.gitignore`.
@@ -409,7 +593,7 @@ This file is an auto-maintained index for quick lookup. Do not manually edit unl
   SYSTEM.md, USER.md, STYLE.md, WORKFLOW.md, TOOLS.md, MEMORY.md, BOOTSTRAP.md, sync-policy.md
   memory/daily/  memory/projects/
   templates/weekly-report.md  templates/jd-optimize.md  templates/meeting-summary.md
-  runtime/inbox.md  runtime/last-session.md
+  runtime/inbox.md  runtime/last-session.md  runtime/active-task.md  runtime/interrupted-tasks.md  runtime/resume-protocol.md  runtime/resume-checkpoint-template.md
 
 写入规则：
 - SYSTEM.md：写入项目级规则（优先读 .assistant/、不存敏感信息、不确定标记 Pending confirmation、信息分层存储）
@@ -421,7 +605,7 @@ This file is an auto-maintained index for quick lookup. Do not manually edit unl
 - BOOTSTRAP.md：顶部写 `status: in_progress` + `started_at: 今天日期`，列出待补全问题和完成条件
 - sync-policy.md：写入默认同步策略模板 `sync_default: ask`（每次询问），用户可通过对话改为 `always` 或 `never`
 - 三个模板文件：各写一个简洁的默认结构即可
-- runtime 文件：各写一个最小模板
+- runtime 文件：按 project-filesystem.md 中定义的"Runtime files to create on initialization"写入完整默认内容（包括 active-task.md、interrupted-tasks.md、resume-protocol.md、resume-checkpoint-template.md）
 - 创建今天的 daily 文件：memory/daily/YYYY-MM-DD.md
 - 如果是 Git 仓库，处理 .gitignore
 - 更新全局索引：在 `~/.claude/global-projects-index.md` 的 Projects 表中添加当前项目条目（name、path、status=active、created=今天、description=待补全）
