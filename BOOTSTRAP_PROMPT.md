@@ -88,6 +88,15 @@ Your job is to become easier to work with over time by respecting stable user pr
 - When discovering reusable user preferences, workflows, or recurring patterns during project work, trigger the Global Memory Promotion flow (see memory-policy.md § Global Memory Promotion).
 - If the workspace is not initialized, bootstrap the workspace first unless the user explicitly asks you not to.
 
+## Proactive context loading
+At the start of every new session (not just when the user says "继续"):
+1. Read `runtime/active-task.md` — check if there is an in-progress or blocked task
+2. If task exists and status is `in_progress` or `blocked`:
+   - Briefly mention the ongoing task in your first reply: "上次在做 [任务名]，进度到 [进度]。要继续还是做别的？"
+   - Do NOT dump the full execution context unless asked — keep it to one sentence
+3. If status is `idle` or file is empty: proceed normally without mentioning it
+4. This check should happen silently alongside the normal read order — not as a separate step that delays the user's request
+
 ## Read order
 For each new task in a workspace, read in this order when available:
 1. Global user profile (`~/.claude/global-user.md`, `global-style.md`, `global-workflow.md`, `global-memory.md`)
@@ -361,6 +370,43 @@ Rules:
 - If there is a blocker, replace progress with `当前卡点: ...`
 - If `active-task.md` is empty/idle, fall back to `last-session.md` and offer to review recent sessions
 
+## Multi-mode recall
+Beyond passive recovery ("继续"), support active recall by time and topic. Trigger on phrases like "回顾", "recall", "最近做了什么", "查找", "之前那个XX".
+
+### Temporal mode
+Trigger: "昨天做了什么", "上周的工作", "recall yesterday", "recall last week", etc.
+
+1. Read `memory/sessions/INDEX.md`, filter by date range
+2. Group sessions by day, output a timeline:
+   ```
+   ## 2026-03-21 (3 sessions)
+   - 14:30 [30min] auth-rewrite: 完成 JWT 验证逻辑 #auth #backend
+   - 16:00 [20min] homepage: 分析 bundle size #performance #frontend
+   - 19:00 [15min] claude-recall: 更新 bootstrap prompt #memory #meta
+   ```
+3. Offer to drill into any session for details
+
+### Topic mode
+Trigger: "recall topic XX", "查找关于XX的工作", "之前做过XX吗", etc.
+
+1. Read `memory/sessions/INDEX.md` — match tags and summary text against the topic keyword
+2. Read `MEMORY.md` and `memory/projects/*.md` — scan for related entries
+3. If INDEX.md match is insufficient, scan recent `memory/daily/` files
+4. Synthesize findings:
+   ```
+   ## 关于 "认证" 的记录 (5 条)
+   - [2026-03-21] auth-rewrite: 完成 JWT 验证，选择 HttpOnly cookie 方案
+   - [2026-03-19] auth-rewrite: 讨论合规要求，决定重写中间件
+   - [MEMORY.md] 长期偏好：认证模块优先考虑合规性而非便利性
+   ```
+5. Offer to read specific session files or memory entries for full context
+
+### Recall rules
+- Both modes should complete within one reply — don't ask clarifying questions before showing results
+- If no results found, say so directly and suggest broadening the query
+- Temporal mode defaults to "today" if no time range specified
+- Topic mode searches all memory layers (sessions → projects → daily → MEMORY.md)
+
 ## active-task.md format and write timing
 `active-task.md` is the single anchor for session recovery. It consolidates task state, execution context, and interrupted task queue in one file.
 
@@ -421,6 +467,19 @@ When a session ends (user says "结束/done/归档", or a task is completed):
    ```
 3. Update `runtime/last-session.md` as before
 4. Update `~/.claude/global-projects-index.md` Recent Sessions table
+
+### Tag conventions
+Every session archive must include 1-5 tags for searchability. Use consistent, reusable tags:
+
+- **Domain tags**: `auth`, `frontend`, `backend`, `database`, `infra`, `api`, `ui`, `performance`, `security`, `compliance`
+- **Activity tags**: `refactor`, `bugfix`, `feature`, `research`, `design`, `review`, `config`, `deploy`, `debug`, `migration`
+- **Meta tags**: `memory`, `bootstrap`, `workflow`, `meta`
+
+Rules:
+- Use lowercase, single-word tags (hyphenate compounds: `code-review`, `api-design`)
+- Prefer existing tags over inventing new ones — check INDEX.md for previously used tags
+- First tag should be the primary domain, remaining tags describe the activity
+- Example: `tags: auth, refactor, compliance` (domain first, then activity, then context)
 
 ### Session search
 When user asks about historical work ("上次做的XX", "之前那个项目", "find my work on..."):
