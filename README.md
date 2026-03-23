@@ -35,7 +35,9 @@ This prompt transforms Claude Code from a powerful but amnesic one-shot tool int
 - **Global Memory Promotion:** As it discovers your habits and reusable knowledge during active projects, it can automatically promote them to your global profile.
 - **Project-Specific Customization:** Every project can have its own tailored rules and context that override the global defaults.
 - **Fast Recall:** Helps Claude quickly recall your background, working style, recent decisions, and unfinished context when you re-enter a workspace.
-- **Structured Quick Recall:** Uses `.assistant/runtime/active-task.md`, `interrupted-tasks.md`, and `resume-protocol.md` to recover the current main task first, then show the rest of the paused queue in a stable format.
+- **Proactive Context Loading:** At every session start, Claude silently checks `active-task.md` and briefly mentions any in-progress or blocked task — no need to say "continue" first.
+- **Unified Session Recovery:** A single `active-task.md` file serves as the recovery anchor — containing current task state, execution context, and interrupted task queue — replacing multiple scattered runtime files.
+- **Session Archive & Search:** Completed sessions are auto-archived to `memory/sessions/` with an `INDEX.md` for fast historical lookup by date, project, or tags.
 - **Task-Level Resume Checkpoints:** For multi-step work of many kinds, Claude can maintain a module-local `PROGRESS.md` so a new process can resume from the last accepted step or milestone instead of reconstructing progress from chat.
 - **Layered Bootstrap Interview:** The first-round interview now follows a compact 3-step script that captures name, style, assistant role, ambiguity handling, work types, and memory boundaries without turning startup into a form.
 - **Global Quick Mode:** When launched from `$HOME`, Claude initializes only the global layer and writes directly to `~/.claude/` without asking whether to sync those same facts again.
@@ -85,14 +87,12 @@ Auto-created per project:
   memory/
     daily/           — short-lived daily context (YYYY-MM-DD.md)
     projects/        — project-level cross-session memory
+    sessions/        — auto-archived session summaries + INDEX.md for fast search
   templates/         — reusable starter templates
   runtime/
     inbox.md         — short-lived action items
     last-session.md  — last session summary
-    active-task.md   — current main task for fast recovery
-    interrupted-tasks.md — paused task queue in priority order
-    resume-protocol.md — hard rules for the first recovery reply
-    resume-checkpoint-template.md — schema for named handoff checkpoints
+    active-task.md   — current task state + execution context + interrupted queue (single recovery anchor)
 ```
 
 For non-trivial ongoing work, Claude should also maintain a short `PROGRESS.md` in the active module or task directory. That file is task-local, not part of the shared `.assistant/` skeleton.
@@ -260,10 +260,13 @@ Claude Code reads the durable file structure instead of depending only on epheme
 - [scripts/show-bootstrap.sh](./scripts/show-bootstrap.sh)  
   Prints the bootstrap prompt locally.
 
-- [scripts/show-reset.sh](./scripts/show-reset.sh)  
+- [scripts/show-reset.sh](./scripts/show-reset.sh)
   Prints the reset guide locally.
 
-- [README.zh-CN.md](./README.zh-CN.md)  
+- [scripts/export-session.sh](./scripts/export-session.sh)
+  Auto-archive Claude Code session summaries (can be used as a hook or run manually).
+
+- [README.zh-CN.md](./README.zh-CN.md)
   Chinese documentation.
 
 - [LICENSE](./LICENSE)  
@@ -290,6 +293,7 @@ RESET_GUIDE.md
 scripts/
   show-bootstrap.sh
   show-reset.sh
+  export-session.sh
 ```
 
 This repository is now organized as a lightweight Claude deployment pack rather than only a nested prompt file.
@@ -304,12 +308,15 @@ This repository is now organized as a lightweight Claude deployment pack rather 
 
 ## Recent Improvements
 
+- **proactive context loading** — Claude checks `active-task.md` at every session start and briefly mentions in-progress work
+- **unified session recovery** — single `active-task.md` replaces `interrupted-tasks.md`, `resume-protocol.md`, and `resume-checkpoint-template.md`
+- **session archive system** — `memory/sessions/` with `INDEX.md` for historical session lookup
+- **multi-mode recall** — supports `#tag` conventions for categorizing and filtering recall context
+- **export-session.sh** — new script for auto-archiving Claude Code session summaries (usable as a hook)
 - richer first-round user interview for long-term collaboration
 - explicit global quick mode behavior under `$HOME`
-- no redundant "sync to global" prompt while already writing global files
-- clearer first-time historical project scan workflow
-- tighter alignment between bootstrap questions, memory promotion, and reporting
 - task-level `PROGRESS.md` checkpoints for interrupted implementation work
+- global memory promotion with 4 sync strategies
 
 ## How This Prompt Is Positioned
 
@@ -323,7 +330,7 @@ It is best understood as a structured full setup version:
 
 ## Built-in Optimizations
 
-The prompt includes 16 production-hardened optimizations:
+The prompt includes 19 production-hardened optimizations:
 
 1. `@` import compatibility detection + merged fallback
 2. Idempotency check (3-line content rule)
@@ -341,6 +348,9 @@ The prompt includes 16 production-hardened optimizations:
 14. HOME directory global-only mode (uses `~/.claude/` directly, skips `.assistant/`)
 15. Global Memory Promotion (syncs reusable knowledge from projects to global memory with 4 strategies: sync once / keep local / always sync / never sync)
 16. Module-local `PROGRESS.md` checkpoints for interrupted task recovery
+17. Proactive context loading (silently checks active task at session start)
+18. Unified `active-task.md` as single recovery anchor (replaces 4 separate runtime files)
+19. Session archive with indexed history (`memory/sessions/INDEX.md`)
 
 ## Design Principles
 
